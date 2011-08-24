@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+command_exists tmux ||
+  error "tmux was not found in the path!\nPlease install tmux before using mux!\n bdsm libevent,tmux package install"
+
+tmux_projects_path="$HOME/.bdsm/mux/projects"
+
+ensure_paths_exist "${tmux_projects_path}"
+
+array_shift extension_actions action
+array_shift extension_actions project
+
+variable_is_nonempty project ||
+  error "A project name must be specified as the second parameter! "
+project_root=${projects_path:-"$HOME/projects/${project}"}
+

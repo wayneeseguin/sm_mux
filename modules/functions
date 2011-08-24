@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+
+tab()
+{
+  local _name="$1" _command="$2" _panes="$3" _layout="$4"
+  error "Tab definition function is not yet implemented."
+}
+
+mux_new()
+{
+  local _name="$1"
+  # Create new project from template
+}
+
+mux_edit()
+{
+  local _name="$1"
+}
+
+mux_copy()
+{
+  local _source="$1" _target="$2"
+
+  variable_is_nonempty _source ||
+    fail "Cannot copy project as no source project name was given."
+
+  variable_is_nonempty _target ||
+    fail "Cannot copy project as no target project name was given."
+
+  path_exists "${_source}" ||
+    error "The source project ${_source} does not exist, cannot copy to ${_target}."
+
+  rsync -a \
+    "${tmux_projects_path}/${_source}/" \
+    "${tmux_projects_path}/${_target}/"
+}
+
+mux_rm()
+{
+  local _name="$1"
+  error "Removing a project with a check is not yet implemented."
+}
+
+mux_implode()
+{
+  error "Removing all projects with a check is not yet implemented."
+}
+
+mux_list()
+{
+  for project in "${tmux_projects_path}"/*
+  do
+    printf "${project##${tmux_projects_path}/}"
+  done
+}
+
+mux_info()
+{
+  local _name="$1"
+  # TODO: YAML formatted output instead of simply a dump.
+  cat -v "${tmux_projects_path}/${_name}"
+}
+
+mux_open()
+{
+  true "${project:=${1:-}}"
+
+  [[ -n "${project}" ]] ||
+    fail "The project name must be specified to use mux_open()"
+
+  tab_names=() tab_commands=() tab_panes=() tab_layouts=()
+
+  source_files "${tmux_projects_path}/${project}.mux"
+
+  tmux start-server # Ensure server is running
+
+  if tmux has-session -t ${project}
+  then
+    log "tmux session ${project} is running."
+  else
+    : \
+      "${project_root:=$PWD}"
+
+    enter "${project_root}"
+
+    array_shift tabs first_tab_name
+
+    # v v v what???
+    #env TMUX= tmux start-server \; set-option -g base-index 1 \; new-session -d -s "${project}" -n "${first_tab_name}"
+
+    tmux set-option -t "${project}" default-path "${project_root}"
+
+    for (( index=0 ; index < ${#tabs[@]} ; index++ ))
+    do
+      tmux new-window -t "${project}:$((index+1))" -n "${tab_names[$index]}"
+      (( index++ ))
+    done
+
+    for (( index=0 ; index < ${#tabs[@]} ; index++ ))
+    do
+      tmux new-window -t "${project}:$((index+1))" -n "${tab_names[$index]}"
+    done
+
+    # set up tabs and panes
+    for (( index=0 ; index < ${#tabs[@]} ; index++))
+    do
+      if [[ -n "${tab_commands[$index]}" ]]
+      then
+        tmux send-keys -t "${project}:${index}" "${tab_command[${index}]}" C-m
+
+      elif [[ -n "${tab_panes[$index]}" ]]
+
+        # What was going on here?
+        array_shift tab_panes pane
+
+        tmux send-keys -t "${project}:${index}" "${pane}" C-m
+
+        for pane in "${tab_panes[@]}"
+        do
+          tmux splitw -t "${project}:${index}"
+
+          tmux send-keys -t "${project}:${index}" "${pane}" C-m
+        done
+
+        tmux select-layout -t "${project}:${index}" "${tab_layouts[$index]}"
+      fi
+    done
+
+    tmux select-window -t "${project}:${index}"
+  fi
+
+  if [[ -z "$TMUX" ]]
+  then
+    tmux -u attach-session -t "${project}"
+  else
+    tmux -u switch-client -t "${project}"
+  fi
+}
