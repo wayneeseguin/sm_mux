@@ -1,5 +1,64 @@
 #!/usr/bin/env bash
 
+mux_initialize()
+{
+  command_exists tmux ||
+    error "
+tmux was not found in the path!
+Please install tmux before using mux.
+
+tmux can be installed with sm as follows:
+
+  sm sets install libraries,tools
+  sm libevent,tmux package install
+
+"
+
+  tmux_projects_path="$HOME/.sm/mux/projects"
+
+  ensure_paths_exist "${tmux_projects_path}"
+
+  mux_cli
+
+  variable_is_nonempty project ||
+    error "A project name must be specified as the second parameter! "
+
+  project_root=${projects_path:-"$HOME/projects/${project}"}
+}
+
+mux_cli()
+{
+  local _ignored_args=() args_count=${#extension_args[@]}
+
+  for (( index=0 ; index < $args_count ; index++ ))
+  do
+    token="${extension_args[$index]}"
+
+    case "$token" in
+      project)
+        project="${extension_args[$((++index))]}"
+        ;;
+      project_path)
+        project_path="${extension_args[$((++index))]}"
+        ;;
+      *)
+        if variable_is_empty project
+        then
+          project="${token}"
+        elif variable_is_empty project_path && path_exists "${token}"
+        then
+          projects_path="${token}"
+        else
+          _ignored_args+=("${token}")
+        fi
+        ;;
+    esac
+
+  done
+
+  extension_args=( "${_ignored_args[@]}" )
+}
+
 tab()
 {
   local _name="$1" _command="$2" _panes="$3" _layout="$4"
@@ -8,8 +67,16 @@ tab()
 
 mux_new()
 {
-  local _name="$1"
-  # Create new project from template
+  variable_is_nonempty project ||  fail "No project name given."
+
+  copy_file "${extension_templates_path}/project.tmux" \
+    to "$tmux_projects_path/${project}"
+
+  #install_template "${extension_templates_path}/project.tmux" \
+    #to "$tmux_projects_path/${project}"
+
+  seed_template "$tmux_projects_path/${project}" \
+    project "$project"
 }
 
 mux_edit()
@@ -76,10 +143,9 @@ mux_open()
 
   if tmux has-session -t ${project}
   then
-    log "tmux session ${project} is running."
+    succeed "tmux session ${project} is running."
   else
-    : \
-      "${project_root:=$PWD}"
+    true "${project_root:=$PWD}"
 
     enter "${project_root}"
 
@@ -106,20 +172,21 @@ mux_open()
     do
       if [[ -n "${tab_commands[$index]}" ]]
       then
-        tmux send-keys -t "${project}:${index}" "${tab_command[${index}]}" C-m
+        tmux send-keys -t "${project}:${index}" "${tab_command[${index}]}" "C-m"
 
       elif [[ -n "${tab_panes[$index]}" ]]
+      then
 
         # What was going on here?
         array_shift tab_panes pane
 
-        tmux send-keys -t "${project}:${index}" "${pane}" C-m
+        tmux send-keys -t "${project}:${index}" "${pane}" "C-m"
 
         for pane in "${tab_panes[@]}"
         do
           tmux splitw -t "${project}:${index}"
 
-          tmux send-keys -t "${project}:${index}" "${pane}" C-m
+          tmux send-keys -t "${project}:${index}" "${pane}" "C-m"
         done
 
         tmux select-layout -t "${project}:${index}" "${tab_layouts[$index]}"

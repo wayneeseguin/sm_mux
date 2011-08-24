@@ -1,9 +1,9 @@
 .\"   $Id$
-.\"
+.\
 .\"   Man page for SM Framework mux extension.
-.\"
+.\
 .\"   $Log$
-.\"
+.\
 
 .TH sm 1 "2011 August 17" "SM Framework extension mux"
 
@@ -18,4 +18,34 @@ SM Framework tmux project management extension
 .TP 13
 .B project
 Set the mux project name
+
+.IP deploy
+Deploy application from ${shared_path}
+
+.IP new {project}
+Create a new tmux project configuration named {project}
+
+.IP edit {project}
+Edit a tmux project configuration named {project}
+
+.IP copy {projecta} {projectb}
+Copy {projecta} configuration to {projectb}, creating {projectb} if missing.
+
+.IP rm {project}
+Remove {project} configuration files
+
+.IP implode {project}
+Remove all ~/.bdsm/mux/ {project} configuration files.
+
+.IP list
+List all mux projects
+
+.IP info
+List all mux projects with configurations
+
+.IP info {project}
+Display configuration for {project}
+
+.IP open {project}
+Open or switch to {project} in a tmux session
 
